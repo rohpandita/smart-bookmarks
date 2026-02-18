@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Project Overview
 
-## Getting Started
+Smart Bookmarks is a full-stack web application that allows authenticated users to securely store and manage personal bookmarks. Users can sign in using Google OAuth, add new bookmarks with a title and URL, and delete existing ones through a clean, responsive dashboard interface.
 
-First, run the development server:
+The application is built using Next.js (App Router) for the frontend and Supabase for authentication and database management. It demonstrates authenticated CRUD operations, protected routes using middleware, and client-side state synchronization for immediate UI updates.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+This project was designed to showcase practical full-stack development skills, including authentication flows, database integration, production deployment, and handling real-world edge cases in a modern web stack.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Challenges & Solutions
+1. Client State Not Updating After Insert
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+After adding a new bookmark, the UI did not update until the page was manually refreshed.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Root Cause:
+BookmarkList is a client component that manages its own local state. Inserting a new row into Supabase does not automatically update that local React state. Additionally, router.refresh() only re-renders server components and does not reset client component state.
 
-## Learn More
+Solution:
+After a successful insert, the newly created row is retrieved using .select().single() and dispatched via a CustomEvent. BookmarkList listens for this event and prepends the new bookmark to its local state. This ensures immediate UI updates without requiring a full page reload.
 
-To learn more about Next.js, take a look at the following resources:
+2. Supabase Realtime Configuration
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Initially, realtime updates were inconsistent.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Root Cause:
+The bookmarks table was not added to the supabase_realtime publication, so database changes were not being broadcast.
 
-## Deploy on Vercel
+Solution:
+The table was added to the realtime publication in Supabase. However, for simplicity and reliability in this project, explicit state updates were preferred over realtime subscriptions.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Deployment Issues on Vercel (Middleware Error 500)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+After deploying, the app returned a MIDDLEWARE_INVOCATION_FAILED error.
+
+Root Cause:
+Supabase environment variables were not configured in the Vercel production environment.
+
+Solution:
+Added the required environment variables:
+
+NEXT_PUBLIC_SUPABASE_URL
+
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+Then redeployed the project.
+
+4. OAuth Redirect Configuration
+
+Google login initially failed after deployment.
+
+Root Cause:
+Production URLs were not properly configured in Supabase and Google Cloud Console.
+
+Solution:
+
+Updated Supabase Site URL and redirect URL to the Vercel production domain.
+
+Added the production domain to Google OAuth authorized origins.
+
+Ensured Google redirect URI pointed to Supabase (/auth/v1/callback).
